@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+  build:
+    commands:
+      - echo "Installing dependencies"
+      - npm install
+      - echo "Building project"
+      - npm run build
+      - echo "Zipping build folder"
+      - zip -r amplify.zip build/
+artifacts:
+  files:
+    - amplify.zip
