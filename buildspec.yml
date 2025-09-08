@@ -4,6 +4,8 @@ phases:
   install:
     runtime-versions:
       nodejs: 18
+    commands:
+      - npm install -g aws-cli
   build:
     commands:
       - echo "Installing dependencies"
@@ -11,7 +13,16 @@ phases:
       - echo "Building project"
       - npm run build
       - echo "Zipping build folder"
-      - zip -r amplify.zip build/
+      - zip -r site.zip build/
+  post_build:
+    commands:
+      - echo "Uploading to S3..."
+      - aws s3 cp site.zip s3://$ARTIFACT_BUCKET/$CODEBUILD_BUILD_ID/site.zip
+      - echo "Triggering Amplify deployment..."
+      - aws amplify start-deployment \
+          --app-id d1ri5dv3wph44f \
+          --branch-name main \
+          --source-url https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CODEBUILD_BUILD_ID/site.zip
 artifacts:
   files:
-    - amplify.zip
+    - site.zip
