@@ -36,12 +36,12 @@ phases:
       - aws amplify start-deployment --app-id "${APP_ID}" --branch-name "${BRANCH}" --source-url "s3://${S3_BUCKET}/${ARTIFACT_KEY}" > start-deploy-output.json
       - cat start-deploy-output.json
       - JOB_ID=$(jq -r '.jobSummary.jobId // .jobId // empty' start-deploy-output.json)
-      - |
+      - >
         if [ -z "$JOB_ID" ]; then
           echo "Failed to obtain job id from start-deploy-output.json"
           exit 1
         fi
-      - |
+      - >
         echo "Polling Amplify job: ${JOB_ID}"
         n=0
         STATUS=""
@@ -52,7 +52,7 @@ phases:
           if [ "$STATUS" = "SUCCEED" ] || [ "$STATUS" = "FAILED" ]; then break; fi
           n=$((n+1)); sleep 10
         done
-      - |
+      - >
         if [ "$STATUS" != "SUCCEED" ]; then
           echo "Deployment finished with non-success status: $STATUS"
           echo "$STATUS_JSON"
