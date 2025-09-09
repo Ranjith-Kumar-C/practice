@@ -23,11 +23,13 @@ phases:
       - S3_BUCKET=$(jq -r .s3_bucket artifact-info.json)
       - echo "Artifact key - ${ARTIFACT_KEY}"
       - echo "S3 bucket - ${S3_BUCKET}"
+      - PRESIGNED_URL=$(aws s3 presign "s3://${S3_BUCKET}/${ARTIFACT_KEY}" --expires-in 3600)
+      - echo "Generated presigned URL"
 
   build:
     commands:
       - echo "Calling aws amplify start-deployment..."
-      - aws amplify start-deployment --app-id "${APP_ID}" --branch-name "${BRANCH}" --source-url "s3://${S3_BUCKET}/${ARTIFACT_KEY}" > start-deploy-output.json
+      - aws amplify start-deployment --app-id "${APP_ID}" --branch-name "${BRANCH}" --source-url "${PRESIGNED_URL}" > start-deploy-output.json
       - cat start-deploy-output.json
       - JOB_ID=$(jq -r '.jobSummary.jobId // .jobId // empty' start-deploy-output.json)
       - if [ -z "$JOB_ID" ]; then echo "Failed to obtain job id from start-deploy-output.json"; exit 1; fi
