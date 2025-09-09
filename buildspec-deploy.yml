@@ -3,7 +3,7 @@ version: 0.2
 env:
   variables:
     REGION: "us-east-1"
-    APP_ID: "d133vxv6yy7vaa"
+    APP_ID: "d1ri5dv3wph44f"
     BRANCH: "staging"
 
 phases:
@@ -11,36 +11,55 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - pip install --upgrade awscli jq || true
-      - echo "Install done"
+      - echo "Install: ensure aws cli present"
+      - pip install --upgrade awscli || true
+      # jq is required to parse JSON; install via package manager if needed. The command below is safe and will be ignored if jq already exists:
+      - |
+        if ! command -v jq >/dev/null 2>&1; then
+          echo "jq not found; attempting to install via apt-get (may fail on some images)..."
+          if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y jq || true
+          fi
+        fi
 
   pre_build:
     commands:
       - echo "Reading artifact-info.json"
-      - cat artifact-info.json
-      - export ARTIFACT_KEY=$(jq -r .artifact_key artifact-info.json)
-      - export S3_BUCKET=$(jq -r .s3_bucket artifact-info.json)
-      - echo "Deploying artifact: s3://${S3_BUCKET}/${ARTIFACT_KEY}"
+      - cat artifact-info.json || (echo "artifact-info.json not found" && exit 1)
+      - ARTIFACT_KEY=$(jq -r .artifact_key artifact-info.json)
+      - S3_BUCKET=$(jq -r .s3_bucket artifact-info.json)
+      - echo "Artifact key: ${ARTIFACT_KEY}"
+      - echo "S3 bucket: ${S3_BUCKET}"
 
   build:
     commands:
-      - echo "Calling start-deployment..."
-      - aws amplify start-deployment --app-id ${APP_ID} --branch-name ${BRANCH} --source-url "s3://${S3_BUCKET}/${ARTIFACT_KEY}" > start-deploy-output.json
+      - echo "Calling aws amplify start-deployment..."
+      - aws amplify start-deployment --app-id "${APP_ID}" --branch-name "${BRANCH}" --source-url "s3://${S3_BUCKET}/${ARTIFACT_KEY}" > start-deploy-output.json
       - cat start-deploy-output.json
       - JOB_ID=$(jq -r '.jobSummary.jobId // .jobId // empty' start-deploy-output.json)
-      - if [ -z "$JOB_ID" ]; then echo "Failed to start deployment (no job id)"; exit 1; fi
-      - echo "Polling job status: $JOB_ID"
-      - n=0
-      - STATUS=""
-      - until [ "$STATUS" = "SUCCEED" ] || [ "$STATUS" = "FAILED" ] || [ $n -ge 40 ]; do
-          STATUS_JSON=$(aws amplify get-job --app-id ${APP_ID} --branch-name ${BRANCH} --job-id ${JOB_ID});
-          STATUS=$(echo "$STATUS_JSON" | jq -r '.job.summary.status' || echo "UNKNOWN");
-          echo "Attempt $n: status=$STATUS";
-          if [ "$STATUS" = "SUCCEED" ] || [ "$STATUS" = "FAILED" ]; then break; fi;
-          n=$((n+1));
-          sleep 10;
+      - if [ -z "$JOB_ID" ]; then echo "Failed to obtain job id from start-deploy-output.json" && exit 1; fi
+      - |
+        echo "Polling Amplify job: ${JOB_ID}"
+        n=0
+        STATUS=""
+        until [ "$STATUS" = "SUCCEED" ] || [ "$STATUS" = "FAILED" ] || [ $n -ge 40 ]; do
+          STATUS_JSON=$(aws amplify get-job --app-id "${APP_ID}" --branch-name "${BRANCH}" --job-id "${JOB_ID}")
+          STATUS=$(echo "$STATUS_JSON" | jq -r '.job.summary.status' || echo "UNKNOWN")
+          echo "Attempt $n: status=$STATUS"
+          if [ "$STATUS" = "SUCCEED" ] || [ "$STATUS" = "FAILED" ]; then
+            break
+          fi
+          n=$((n+1))
+          sleep 10
         done
-      - if [ "$STATUS" != "SUCCEED" ]; then echo "Deployment finished with non-success status: $STATUS"; exit 1; fi
+      - |
+        if [ "$STATUS" != "SUCCEED" ]; then
+          echo "Deployment finished with non-success status: $STATUS"
+          echo "Full job JSON:"
+          echo "$STATUS_JSON"
+          exit 1
+        fi
+      - echo "Amplify deployment succeeded."
 
 artifacts:
   files:
