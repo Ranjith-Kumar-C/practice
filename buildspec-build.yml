@@ -18,16 +18,15 @@ phases:
 
   build:
     commands:
-      # timestamp for unique key
       - TIMESTAMP=$(date -u +"%Y%m%dT%H%M%SZ")
       - ARTIFACT_KEY="${ARTIFACT_PREFIX}/app-${TIMESTAMP}.zip"
       - echo "Creating zip ${ARTIFACT_KEY}"
       - zip -r build.zip index.html || (echo "zip failed" && exit 1)
       - echo "Uploading s3://${BUCKET}/${ARTIFACT_KEY}"
       - aws s3 cp build.zip "s3://${BUCKET}/${ARTIFACT_KEY}"
-      # export artifact metadata so next stage can use it
       - printf '{"artifact_key":"%s","s3_bucket":"%s"}' "${ARTIFACT_KEY}" "${BUCKET}" > artifact-info.json
 
 artifacts:
   files:
     - artifact-info.json
+    - buildspec-deploy.yml
