@@ -11,7 +11,7 @@ phases:
     runtime-versions:
       python: "3.11"
     commands:
-      - echo "Install: ensure aws cli present"
+      - echo "Install - ensure aws cli present"
       - pip install --upgrade awscli || true
       - if ! command -v jq >/dev/null 2>&1; then echo "jq not found; attempting to install via apt-get (may fail on some images)..."; if command -v apt-get >/dev/null 2>&1; then sudo apt-get update && sudo apt-get install -y jq || true; fi; fi
 
@@ -21,8 +21,8 @@ phases:
       - cat artifact-info.json || (echo "artifact-info.json not found" && exit 1)
       - ARTIFACT_KEY=$(jq -r .artifact_key artifact-info.json)
       - S3_BUCKET=$(jq -r .s3_bucket artifact-info.json)
-      - echo "Artifact key: ${ARTIFACT_KEY}"
-      - echo "S3 bucket: ${S3_BUCKET}"
+      - echo "Artifact key - ${ARTIFACT_KEY}"
+      - echo "S3 bucket - ${S3_BUCKET}"
 
   build:
     commands:
@@ -31,8 +31,8 @@ phases:
       - cat start-deploy-output.json
       - JOB_ID=$(jq -r '.jobSummary.jobId // .jobId // empty' start-deploy-output.json)
       - if [ -z "$JOB_ID" ]; then echo "Failed to obtain job id from start-deploy-output.json"; exit 1; fi
-      - echo "Polling Amplify job: ${JOB_ID}"; n=0; STATUS=""; until [ "$STATUS" = "SUCCEED" ] || [ "$STATUS" = "FAILED" ] || [ $n -ge 40 ]; do STATUS_JSON=$(aws amplify get-job --app-id "${APP_ID}" --branch-name "${BRANCH}" --job-id "${JOB_ID}"); STATUS=$(echo "$STATUS_JSON" | jq -r '.job.summary.status' || echo "UNKNOWN"); echo "Attempt $n: status=$STATUS"; if [ "$STATUS" = "SUCCEED" ] || [ "$STATUS" = "FAILED" ]; then break; fi; n=$((n+1)); sleep 10; done
-      - if [ "$STATUS" != "SUCCEED" ]; then echo "Deployment finished with non-success status: $STATUS"; echo "$STATUS_JSON"; exit 1; fi
+      - echo "Polling Amplify job - ${JOB_ID}"; n=0; STATUS=""; until [ "$STATUS" = "SUCCEED" ] || [ "$STATUS" = "FAILED" ] || [ $n -ge 40 ]; do STATUS_JSON=$(aws amplify get-job --app-id "${APP_ID}" --branch-name "${BRANCH}" --job-id "${JOB_ID}"); STATUS=$(echo "$STATUS_JSON" | jq -r '.job.summary.status' || echo "UNKNOWN"); echo "Attempt $n - status=$STATUS"; if [ "$STATUS" = "SUCCEED" ] || [ "$STATUS" = "FAILED" ]; then break; fi; n=$((n+1)); sleep 10; done
+      - if [ "$STATUS" != "SUCCEED" ]; then echo "Deployment finished with non-success status - $STATUS"; echo "$STATUS_JSON"; exit 1; fi
       - echo "Amplify deployment succeeded."
 
 artifacts:
