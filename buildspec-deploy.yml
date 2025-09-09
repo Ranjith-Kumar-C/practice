@@ -3,7 +3,7 @@ version: 0.2
 env:
   variables:
     REGION: "us-east-1"
-    APP_ID: "d1ri5dv3wph44f"
+    APP_ID: "d133vxv6yy7vaa"
     BRANCH: "staging"
 
 phases:
