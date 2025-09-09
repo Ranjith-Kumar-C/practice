@@ -13,7 +13,7 @@ phases:
     commands:
       - echo "Install: ensure aws cli present"
       - pip install --upgrade awscli || true
-      - |
+      - >
         if ! command -v jq >/dev/null 2>&1; then
           echo "jq not found; attempting to install via apt-get (may fail on some images)..."
           if command -v apt-get >/dev/null 2>&1; then
